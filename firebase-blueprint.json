@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "company": {
+      "title": "Company",
+      "description": "A subsidiary company under the GEMKOL FZE umbrella",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 100 },
+        "tagline": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "vision": { "type": "string", "maxLength": 1000 },
+        "mission": { "type": "string", "maxLength": 1000 },
+        "values": { "type": "array" },
+        "logo": { "type": "string" },
+        "heroImage": { "type": "string" },
+        "sector": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["name", "description", "sector"]
+    },
+    "product": {
+      "title": "Product",
+      "description": "A product offered by a GEMKOL company",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "companyId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "price": { "type": "string", "maxLength": 50 },
+        "image": { "type": "string" },
+        "specifications": { "type": "object" },
+        "category": { "type": "string", "maxLength": 50 },
+        "stockStatus": { "type": "string", "enum": ["in-stock", "out-of-stock", "on-request"] }
+      },
+      "required": ["name", "companyId"]
+    },
+    "property": {
+      "title": "Property",
+      "description": "A real estate property listing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 100 },
+        "location": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "features": { "type": "array" },
+        "price": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["available", "sold", "reserved"] },
+        "images": { "type": "array" },
+        "video": { "type": "string" }
+      },
+      "required": ["name", "location", "type"]
+    },
+    "project": {
+      "title": "Project",
+      "description": "A business or infrastructure project",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "companyId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "location": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "maxLength": 50 },
+        "images": { "type": "array" },
+        "video": { "type": "string" }
+      },
+      "required": ["name", "companyId"]
+    },
+    "media": {
+      "title": "Media",
+      "description": "A photo or video asset",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "companyId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 100 },
+        "type": { "type": "string", "enum": ["image", "video"] },
+        "url": { "type": "string" },
+        "thumbnail": { "type": "string" },
+        "category": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["url", "type", "companyId"]
+    },
+    "enquiry": {
+      "title": "Enquiry",
+      "description": "A contact enquiry from a visitor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 100, "format": "email" },
+        "phone": { "type": "string", "maxLength": 20 },
+        "subject": { "type": "string", "maxLength": 100 },
+        "message": { "type": "string", "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["new", "read", "replied"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "companies": {
+      "schema": "company",
+      "description": "Collection of subsidiary companies"
+    },
+    "products": {
+      "schema": "product",
+      "description": "Collection of products across all companies"
+    },
+    "properties": {
+      "schema": "property",
+      "description": "Real estate property listings"
+    },
+    "projects": {
+      "schema": "project",
+      "description": "Major projects and developments"
+    },
+    "media": {
+      "schema": "media",
+      "description": "Global media gallery"
+    },
+    "enquiries": {
+      "schema": "enquiry",
+      "description": "Contact enquiries from the website"
+    }
+  }
+}

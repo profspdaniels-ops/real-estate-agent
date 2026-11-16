@@ -1,0 +1,156 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isEmailVerified() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'profspdaniels@gmail.com'
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validation Helpers ---
+
+    function isValidCompany(data) {
+      return data.keys().hasAll(['name', 'description', 'sector']) &&
+             data.keys().hasOnly(['id', 'name', 'tagline', 'description', 'vision', 'mission', 'values', 'logo', 'heroImage', 'sector']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.description is string && data.description.size() <= 2000 &&
+             data.sector is string && data.sector.size() <= 50 &&
+             (!('tagline' in data) || (data.tagline is string && data.tagline.size() <= 200)) &&
+             (!('vision' in data) || (data.vision is string && data.vision.size() <= 1000)) &&
+             (!('mission' in data) || (data.mission is string && data.mission.size() <= 1000)) &&
+             (!('values' in data) || data.values is list);
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['name', 'companyId']) &&
+             data.keys().hasOnly(['id', 'companyId', 'name', 'description', 'price', 'image', 'specifications', 'category', 'stockStatus']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.companyId is string && isValidId(data.companyId) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+             (!('price' in data) || (data.price is string && data.price.size() <= 50)) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 50)) &&
+             (!('stockStatus' in data) || data.stockStatus in ['in-stock', 'out-of-stock', 'on-request']);
+    }
+
+    function isValidProperty(data) {
+      return data.keys().hasAll(['name', 'location', 'type']) &&
+             data.keys().hasOnly(['id', 'name', 'location', 'type', 'description', 'features', 'price', 'status', 'images', 'video']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.location is string && data.location.size() <= 200 &&
+             data.type is string && data.type.size() <= 50 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+             (!('price' in data) || (data.price is string && data.price.size() <= 50)) &&
+             (!('status' in data) || data.status in ['available', 'sold', 'reserved']);
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['name', 'companyId']) &&
+             data.keys().hasOnly(['id', 'companyId', 'name', 'description', 'location', 'status', 'images', 'video']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.companyId is string && isValidId(data.companyId) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 200)) &&
+             (!('status' in data) || (data.status is string && data.status.size() <= 50));
+    }
+
+    function isValidMedia(data) {
+      return data.keys().hasAll(['url', 'type', 'companyId']) &&
+             data.keys().hasOnly(['id', 'companyId', 'title', 'type', 'url', 'thumbnail', 'category']) &&
+             data.url is string && data.type in ['image', 'video'] &&
+             data.companyId is string && (data.companyId == 'all' || isValidId(data.companyId)) &&
+             (!('title' in data) || (data.title is string && data.title.size() <= 100)) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 50));
+    }
+
+    function isValidEnquiry(data) {
+      return data.keys().hasAll(['fullName', 'message', 'createdAt']) &&
+             data.keys().hasOnly(['id', 'fullName', 'email', 'phone', 'subject', 'message', 'status', 'createdAt']) &&
+             data.fullName is string && data.fullName.size() <= 100 &&
+             data.message is string && data.message.size() <= 2000 &&
+             data.createdAt == request.time &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 100)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 20)) &&
+             (!('subject' in data) || (data.subject is string && data.subject.size() <= 100)) &&
+             (!('status' in data) || data.status in ['new', 'read', 'replied']);
+    }
+
+    // --- Collection Matches ---
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Only manageable via console or specialized tool
+    }
+
+    match /companies/{companyId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidCompany(incoming()) && isValidId(companyId);
+      allow update: if isAdmin() && isValidCompany(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidProduct(incoming()) && isValidId(productId) && exists(/databases/$(database)/documents/companies/$(incoming().companyId));
+      allow update: if isAdmin() && isValidProduct(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /properties/{propertyId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidProperty(incoming()) && isValidId(propertyId);
+      allow update: if isAdmin() && isValidProperty(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidProject(incoming()) && isValidId(projectId) && exists(/databases/$(database)/documents/companies/$(incoming().companyId));
+      allow update: if isAdmin() && isValidProject(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /media/{mediaId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidMedia(incoming()) && isValidId(mediaId);
+      allow update: if isAdmin() && isValidMedia(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /enquiries/{enquiryId} {
+      allow read: if isAdmin();
+      allow create: if isValidEnquiry(incoming()) && isValidId(enquiryId);
+      allow update: if isAdmin() && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+        incoming().status in ['read', 'replied']
+      );
+      allow delete: if isAdmin();
+    }
+  }
+}
